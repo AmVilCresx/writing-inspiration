@@ -2,16 +2,18 @@ import { redirect } from "next/navigation";
 import { verifyAdminCookie } from "@/lib/auth";
 import AdminEntryList from "@/components/AdminEntryList";
 import AdminTagManager from "@/components/AdminTagManager";
+import AdminTypeManager from "@/components/AdminTypeManager";
 import UserMenu from "@/components/UserMenu";
-import { adminFetchEntries, adminFetchTags } from "@/data/admin";
+import { adminFetchEntries, adminFetchTags, adminFetchTypes } from "@/data/admin";
 
 export default async function AdminPage() {
   const admin = verifyAdminCookie();
   if (!admin) redirect("/admin/login");
 
-  const [entries, tags] = await Promise.all([
+  const [entries, tags, types] = await Promise.all([
     adminFetchEntries(),
     adminFetchTags(),
+    adminFetchTypes(),
   ]);
 
   return (
@@ -24,7 +26,8 @@ export default async function AdminPage() {
         <UserMenu email={admin.email} />
       </div>
 
-      <AdminEntryList entries={entries} tags={tags} />
+      <AdminEntryList entries={entries} tags={tags} types={types} />
+      <AdminTypeManager types={types} />
       <AdminTagManager tags={tags} />
     </>
   );

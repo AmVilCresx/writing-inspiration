@@ -12,6 +12,7 @@ CREATE TABLE wi_entries (
   author      varchar(32),
   example     varchar(200),
   mood        varchar(20),
+  hidden      boolean      DEFAULT false,
   created_at  timestamptz  DEFAULT now(),
   updated_at  timestamptz  DEFAULT now()
 );
@@ -27,6 +28,18 @@ COMMENT ON COLUMN wi_entries.example      IS '例句/用法示例';
 COMMENT ON COLUMN wi_entries.mood         IS '情感氛围（单选）';
 COMMENT ON COLUMN wi_entries.created_at   IS '创建时间';
 COMMENT ON COLUMN wi_entries.updated_at   IS '更新时间';
+
+-- 类型字典表
+CREATE TABLE wi_types (
+  id          bigserial PRIMARY KEY,
+  name        varchar(10) NOT NULL UNIQUE,
+  created_at  timestamptz DEFAULT now()
+);
+
+COMMENT ON TABLE  wi_types              IS '类型字典表：成语/名言/俗语/诗词/歇后语等';
+COMMENT ON COLUMN wi_types.id          IS '主键ID';
+COMMENT ON COLUMN wi_types.name        IS '类型名称';
+COMMENT ON COLUMN wi_types.created_at  IS '创建时间';
 
 -- 标签字典表
 CREATE TABLE wi_tags (
@@ -66,12 +79,28 @@ COMMENT ON COLUMN wi_admins.password_hash  IS '登录密码bcrypt哈希';
 COMMENT ON COLUMN wi_admins.created_at     IS '创建时间';
 
 -- --------------------------------------------
+-- 辅助函数：安全插入标签关联（INSERT ON CONFLICT DO NOTHING）
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION wi_upsert_entry_tags(rows_json text)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO wi_entry_tags (entry_id, tag_id)
+  SELECT (r->>'entry_id')::bigint, (r->>'tag_id')::bigint
+  FROM json_array_elements(rows_json::json) AS r
+  ON CONFLICT (entry_id, tag_id) DO NOTHING;
+END;
+$$ LANGUAGE plpgsql;
+
+-- --------------------------------------------
 -- 索引
 -- --------------------------------------------
 CREATE INDEX idx_wi_entries_type   ON wi_entries (type);
 CREATE INDEX idx_wi_entry_tags_tag ON wi_entry_tags (tag_id);
 
 -- --------------------------------------------
+-- 初始数据：类型
+INSERT INTO wi_types (name) VALUES ('成语'), ('名言'), ('俗语'), ('诗词'), ('歇后语');
+
 -- 初始数据：标签
 -- --------------------------------------------
 INSERT INTO wi_tags (name) VALUES

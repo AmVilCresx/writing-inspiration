@@ -93,6 +93,7 @@ export async function fetchEntries(params?: {
   let builder = supabaseAnon
     .from("wi_entries")
     .select("*")
+    .eq("hidden", false)
     .order("id", { ascending: true });
 
   if (type) builder = builder.eq("type", type);
@@ -143,6 +144,7 @@ export async function fetchEntries(params?: {
           .from("wi_entries")
           .select("*")
           .in("id", matchedEntryIds)
+          .eq("hidden", false)
           .order("id", { ascending: true });
 
         if (tagMatchedEntries) {
@@ -170,6 +172,7 @@ export async function fetchEntryById(id: string): Promise<Entry | null> {
     .from("wi_entries")
     .select("*")
     .eq("id", id)
+    .eq("hidden", false)
     .single();
 
   if (error || !data) return null;
@@ -188,6 +191,7 @@ export async function fetchRelated(entry: Entry): Promise<Entry[]> {
     .from("wi_entries")
     .select("*")
     .neq("id", entry.id)
+    .eq("hidden", false)
     .limit(8);
 
   if (entry.type) builder = builder.eq("type", entry.type);
@@ -225,6 +229,22 @@ export async function fetchAllMoods(): Promise<string[]> {
     if (row.mood) set.add(row.mood);
   });
   return Array.from(set).sort();
+}
+
+/**
+ * 获取所有类型
+ */
+export async function fetchTypes(): Promise<{ id: number; name: string }[]> {
+  const { data, error } = await supabaseAnon
+    .from("wi_types")
+    .select("id, name")
+    .order("id", { ascending: true });
+
+  if (error) {
+    console.error("fetchTypes error:", error);
+    return [];
+  }
+  return data || [];
 }
 
 /**

@@ -34,9 +34,11 @@ export function useModal() {
 export function ModalProvider({ children }: { children: ReactNode }) {
   const [visible, setVisible] = useState(false);
   const [opts, setOpts] = useState<ConfirmOptions | AlertOptions | null>(null);
+  const [mode, setMode] = useState<"alert" | "confirm">("alert");
   const [resolveRef, setResolveRef] = useState<((v: boolean | void) => void) | null>(null);
 
   const alert = useCallback((options: AlertOptions) => {
+    setMode("alert");
     setOpts(options);
     setVisible(true);
     return new Promise<void>((resolve) => {
@@ -48,6 +50,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const confirm = useCallback((options: ConfirmOptions) => {
+    setMode("confirm");
     setOpts(options);
     setVisible(true);
     return new Promise<boolean>((resolve) => {
@@ -58,7 +61,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const isConfirm = "cancelText" in (opts || {});
+  const isConfirm = mode === "confirm";
 
   const handleConfirm = () => {
     setVisible(false);

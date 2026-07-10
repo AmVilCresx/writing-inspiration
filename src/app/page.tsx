@@ -1,16 +1,14 @@
 import Link from "next/link";
 import SearchBox from "@/components/SearchBox";
-import { fetchEntries } from "@/data/entries";
+import { fetchEntries, fetchTypes } from "@/data/entries";
 
 const PAGE_SIZE = 50;
 
-const TYPE_COLORS: Record<string, string> = {
-  "成语": "#e8f0e4",
-  "名言": "#e4ecf0",
-  "俗语": "#f0ebe4",
-  "诗词": "#e8e4f0",
-  "歇后语": "#f0e4ec",
-};
+//  类型配色
+const TYPE_COLORS = [
+  "#e8f0e4", "#e4ecf0", "#f0ebe4", "#e8e4f0", "#f0e4ec",
+  "#e4e8f0", "#f0e8e4", "#ebe4f0", "#e4f0e8", "#f0ebe8",
+];
 
 export default async function HomePage({
   searchParams,
@@ -29,6 +27,8 @@ export default async function HomePage({
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   });
+
+  const types = await fetchTypes();
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
 
@@ -54,16 +54,17 @@ export default async function HomePage({
       {/* 搜索框 */}
       <SearchBox defaultValue={q} />
 
-      {/* 分类标签（静态） */}
+      {/* 分类标签 */}
       <div className="tag-cloud" style={{ marginBottom: 10 }}>
         <Link href={baseHref} className={`pill${!type && !mood ? " active" : ""}`}>全部</Link>
-        {["成语", "名言", "俗语", "诗词", "歇后语"].map((t) => (
+        {types.map((t, i) => (
           <Link
-            key={t}
-            href={`?${q ? `q=${q}&` : ""}type=${t}${mood ? `&mood=${mood}` : ""}`}
-            className={`pill${type === t ? " active" : ""}${type && type !== t ? " inactive" : ""}`}
+            key={t.id}
+            href={`?${q ? `q=${q}&` : ""}type=${t.name}${mood ? `&mood=${mood}` : ""}`}
+            className={`pill${type === t.name ? " active" : ""}${type && type !== t.name ? " inactive" : ""}`}
+            style={{ background: type === t.name ? TYPE_COLORS[i % TYPE_COLORS.length] : undefined }}
           >
-            {t}
+            {t.name}
           </Link>
         ))}
       </div>
@@ -80,16 +81,19 @@ export default async function HomePage({
         <div className="empty">未找到相关内容</div>
       ) : (
         <div className="pill-cloud">
-          {filtered.map((entry) => (
-            <Link
-              key={entry.id}
-              href={`/entry/${entry.id}`}
-              style={{ background: TYPE_COLORS[entry.type] || "#e8e8ed" }}
-            >
-              {entry.title}
-              {entry.source && <span className="pill-source">{entry.source}</span>}
-            </Link>
-          ))}
+          {filtered.map((entry) => {
+            const typeIndex = types.findIndex((t) => t.name === entry.type);
+            return (
+              <Link
+                key={entry.id}
+                href={`/entry/${entry.id}`}
+                style={{ background: TYPE_COLORS[typeIndex % TYPE_COLORS.length] || "#e8e8ed" }}
+              >
+                {entry.title}
+                {entry.source && <span className="pill-source">{entry.source}</span>}
+              </Link>
+            );
+          })}
         </div>
       )}
 

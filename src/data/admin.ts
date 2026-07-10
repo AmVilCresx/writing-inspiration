@@ -11,6 +11,7 @@ export interface AdminEntry {
   author: string | null;
   example: string | null;
   mood: string | null;
+  hidden: boolean;
   tagIds: number[];
 }
 
@@ -51,6 +52,7 @@ export async function adminFetchEntries(): Promise<AdminEntry[]> {
     author: row.author,
     example: row.example,
     mood: row.mood,
+    hidden: row.hidden || false,
     tagIds: tagIdsByEntry.get(row.id) || [],
   }));
 }
@@ -69,11 +71,17 @@ export async function adminCreateEntry(entry: Omit<AdminEntry, "id">): Promise<A
     return null;
   }
 
-  // 写入关联
+  // 写入关联（失败时回滚：删除已创建的条目）
   if (tagIds.length > 0) {
-    await supabaseService.from("wi_entry_tags").insert(
+    const { error: tagError } = await supabaseService.from("wi_entry_tags").insert(
       tagIds.map((tag_id) => ({ entry_id: data.id, tag_id }))
     );
+    if (tagError) {
+      console.error("adminCreateEntry tags error:", tagError);
+      // 回滚：删除刚才创建的条目
+      await supabaseService.from("wi_entries").delete().eq("id", data.id);
+      return null;
+    }
   }
 
   return { ...entry, id: data.id };
@@ -92,14 +100,49 @@ export async function adminUpdateEntry(id: number, entry: Omit<AdminEntry, "id">
     return false;
   }
 
-  // 删除旧关联，写入新关联
-  await supabaseService.from("wi_entry_tags").delete().eq("entry_id", id);
-  if (tagIds.length > 0) {
-    await supabaseService.from("wi_entry_tags").insert(
-      tagIds.map((tag_id) => ({ entry_id: id, tag_id }))
-    );
+  // 安全替换标签关联：先删旧再插入新（任何一步失败都不会丢失数据）
+  // 1. 删除需要移除的旧关联
+  const { data: oldRows } = await supabaseService
+    .from("wi_entry_tags")
+    .select("tag_id")
+    .eq("entry_id", id);
+
+  if (oldRows && oldRows.length > 0) {
+    const toRemove = oldRows
+      .map((r: any) => r.tag_id)
+      .filter((tid: number) => !tagIds.includes(tid));
+    if (toRemove.length > 0) {
+      await supabaseService
+        .from("wi_entry_tags")
+        .delete()
+        .eq("entry_id", id)
+        .in("tag_id", toRemove);
+    }
   }
 
+  // 2. 插入新增的关联（ON CONFLICT DO NOTHING 避免主键冲突）
+  if (tagIds.length > 0) {
+    const tagsToInsert = tagIds.map((tag_id: number) => ({ entry_id: id, tag_id }));
+    const { error: insertErr } = await supabaseService
+      .rpc("wi_upsert_entry_tags", { rows: JSON.stringify(tagsToInsert) });
+    if (insertErr) {
+      console.error("adminUpdateEntry tags insert error:", insertErr);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export async function adminToggleHidden(id: number, hidden: boolean): Promise<boolean> {
+  const { error } = await supabaseService
+    .from("wi_entries")
+    .update({ hidden })
+    .eq("id", id);
+  if (error) {
+    console.error("adminToggleHidden error:", error);
+    return false;
+  }
   return true;
 }
 
@@ -128,6 +171,51 @@ export async function adminFetchTags(): Promise<AdminTag[]> {
   }
 
   return data || [];
+}
+
+//  ──────────────────────────────────────────────
+//  类型管理
+//  ──────────────────────────────────────────────
+
+export interface AdminType {
+  id: number;
+  name: string;
+}
+
+export async function adminFetchTypes(): Promise<AdminType[]> {
+  const { data, error } = await supabaseService
+    .from("wi_types")
+    .select("*")
+    .order("id", { ascending: true });
+
+  if (error) {
+    console.error("adminFetchTypes error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function adminCreateType(name: string): Promise<AdminType | null> {
+  const { data, error } = await supabaseService
+    .from("wi_types")
+    .insert({ name })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("adminCreateType error:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function adminDeleteType(id: number): Promise<boolean> {
+  const { error } = await supabaseService.from("wi_types").delete().eq("id", id);
+  if (error) {
+    console.error("adminDeleteType error:", error);
+    return false;
+  }
+  return true;
 }
 
 export async function adminCreateTag(name: string): Promise<AdminTag | null> {
