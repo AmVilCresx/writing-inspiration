@@ -13,6 +13,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "邮箱或密码错误" }, { status: 401 });
   }
 
-  createAdminCookie(admin.email);
+  await createAdminCookie(admin.email);
   return NextResponse.json({ ok: true });
 }

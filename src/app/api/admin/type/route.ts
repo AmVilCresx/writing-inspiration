@@ -3,7 +3,7 @@ import { verifyAdminCookie } from "@/lib/auth";
 import { adminCreateType, adminDeleteType } from "@/data/admin";
 
 export async function POST(req: NextRequest) {
-  if (!verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!await verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const { name } = await req.json();
   if (!name || !name.trim()) {
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!await verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const id = Number(new URL(req.url).searchParams.get("id"));
   if (!id) return NextResponse.json({ error: "缺少 id" }, { status: 400 });

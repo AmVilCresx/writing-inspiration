@@ -6,9 +6,10 @@ import { getTagColor } from "@/lib/colors";
 export default async function EntryPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const entry = await fetchEntryById(params.id);
+  const { id } = await params;
+  const entry = await fetchEntryById(id);
 
   if (!entry) return notFound();
 

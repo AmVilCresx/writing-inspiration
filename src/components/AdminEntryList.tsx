@@ -26,7 +26,7 @@ export default function AdminEntryList({
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: ToastType } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // 同步 server 刷新后的数据
   useEffect(() => { setEntries(initialEntries); }, [initialEntries]);

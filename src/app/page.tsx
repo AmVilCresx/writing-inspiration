@@ -8,11 +8,10 @@ const PAGE_SIZE = 50;
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: { q?: string; type?: string; page?: string };
+  searchParams: Promise<{ q?: string; type?: string; page?: string }>;
 }) {
-  const q = searchParams.q || "";
-  const type = searchParams.type || "";
-  const page = parseInt(searchParams.page || "1", 10);
+  const { q = "", type = "", page: pageStr = "1" } = await searchParams;
+  const page = parseInt(pageStr, 10);
 
   const [types, featured, entriesResult] = await Promise.all([
     fetchTypes(),

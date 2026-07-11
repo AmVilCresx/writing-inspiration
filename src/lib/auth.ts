@@ -36,9 +36,10 @@ export async function verifyAdmin(
 /**
  * 签发 JWT 并写入 Cookie
  */
-export function createAdminCookie(email: string) {
+export async function createAdminCookie(email: string) {
   const token = jwt.sign({ email }, JWT_SECRET, { expiresIn: "7d" });
-  cookies().set(COOKIE_NAME, token, {
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -50,8 +51,9 @@ export function createAdminCookie(email: string) {
 /**
  * 校验当前请求的登录态
  */
-export function verifyAdminCookie(): AdminPayload | null {
-  const token = cookies().get(COOKIE_NAME)?.value;
+export async function verifyAdminCookie(): Promise<AdminPayload | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
 
   try {
@@ -64,6 +66,7 @@ export function verifyAdminCookie(): AdminPayload | null {
 /**
  * 清除登录态
  */
-export function clearAdminCookie() {
-  cookies().delete(COOKIE_NAME);
+export async function clearAdminCookie() {
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
 }

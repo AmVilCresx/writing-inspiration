@@ -12,7 +12,7 @@ export interface AdminEntry {
   example: string | null;
   hidden: boolean;
   tagIds: number[];
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface AdminTag {

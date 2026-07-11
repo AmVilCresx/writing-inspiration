@@ -4,7 +4,7 @@ import { adminCreateEntry, adminUpdateEntry, adminDeleteEntry } from "@/data/adm
 
 // 新增
 export async function POST(req: NextRequest) {
-  if (!verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!await verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const body = await req.json();
   const { type, title, meaning, source, author, example, tagIds } = body;
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     source: source || null,
     author: author || null,
     example: example || null,
+    hidden: false,
     tagIds: tagIds || [],
   });
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
 
 // 修改
 export async function PUT(req: NextRequest) {
-  if (!verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!await verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const body = await req.json();
   const { id, type, title, meaning, source, author, example, tagIds } = body;
@@ -45,6 +46,7 @@ export async function PUT(req: NextRequest) {
     source: source || null,
     author: author || null,
     example: example || null,
+    hidden: body.hidden ?? true,  // 未提供则保持原有（数据库层不更新此字段）
     tagIds: tagIds || [],
   });
 
@@ -54,7 +56,7 @@ export async function PUT(req: NextRequest) {
 
 // 删除
 export async function DELETE(req: NextRequest) {
-  if (!verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!await verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const id = Number(new URL(req.url).searchParams.get("id"));
   if (!id) return NextResponse.json({ error: "缺少 id" }, { status: 400 });

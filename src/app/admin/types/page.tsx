@@ -4,7 +4,7 @@ import AdminTypeManager from "@/components/AdminTypeManager";
 import { adminFetchTypes } from "@/data/admin";
 
 export default async function TypesPage() {
-  const admin = verifyAdminCookie();
+  const admin = await verifyAdminCookie();
   if (!admin) redirect("/admin/login");
 
   const types = await adminFetchTypes();

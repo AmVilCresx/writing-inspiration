@@ -4,7 +4,7 @@ import AdminTagManager from "@/components/AdminTagManager";
 import { adminFetchTags } from "@/data/admin";
 
 export default async function TagsPage() {
-  const admin = verifyAdminCookie();
+  const admin = await verifyAdminCookie();
   if (!admin) redirect("/admin/login");
 
   const tags = await adminFetchTags();

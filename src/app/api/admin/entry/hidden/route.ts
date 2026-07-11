@@ -3,7 +3,7 @@ import { verifyAdminCookie } from "@/lib/auth";
 import { adminToggleHidden } from "@/data/admin";
 
 export async function PATCH(req: NextRequest) {
-  if (!verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!await verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const { id, hidden } = await req.json();
   if (id === undefined || hidden === undefined) {

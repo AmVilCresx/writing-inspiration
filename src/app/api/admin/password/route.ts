@@ -3,7 +3,7 @@ import { verifyAdminCookie } from "@/lib/auth";
 import { supabaseService } from "@/lib/supabase";
 
 export async function PUT(req: NextRequest) {
-  const admin = verifyAdminCookie();
+  const admin = await verifyAdminCookie();
   if (!admin) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const { oldPassword, newPassword } = await req.json();
