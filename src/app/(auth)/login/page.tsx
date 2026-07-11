@@ -1,40 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError("");
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        setError("邮箱或密码错误");
-        return;
-      }
-
-      router.push("/admin");
-      router.refresh();
-    } catch {
-      setError("网络错误，请重试");
-    } finally {
-      setLoading(false);
-    }
+    fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("登录失败");
+        window.location.assign("/admin/entries");
+      })
+      .catch(() => setError("邮箱或密码错误"))
+      .finally(() => setLoading(false));
   };
 
   const s: React.CSSProperties = { width: "100%", padding: "12px 16px", border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.5)", fontFamily: "inherit", fontSize: 15, outline: "none", borderRadius: 12, marginBottom: 16, boxSizing: "border-box", color: "var(--fg)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" };
@@ -58,6 +49,7 @@ export default function AdminLoginPage() {
 
         <form onSubmit={handleSubmit}>
           <input
+            name="email"
             type="email"
             placeholder="邮箱"
             value={email}
@@ -67,6 +59,7 @@ export default function AdminLoginPage() {
             style={s}
           />
           <input
+            name="password"
             type="password"
             placeholder="密码"
             value={password}

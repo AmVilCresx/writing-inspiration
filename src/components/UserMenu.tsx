@@ -68,7 +68,7 @@ export default function UserMenu({ email }: { email: string }) {
             {email}
           </div>
           <a
-            href="/admin/password"
+            href="/password"
             onClick={() => setOpen(false)}
             style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 16px", fontSize: 13, color: "var(--fg)", textDecoration: "none", cursor: "pointer", transition: "background 0.15s" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.6)")}

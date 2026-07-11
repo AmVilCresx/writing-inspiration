@@ -5,7 +5,7 @@ import { adminFetchEntries, adminFetchTags, adminFetchTypes } from "@/data/admin
 
 export default async function EntriesPage() {
   const admin = await verifyAdminCookie();
-  if (!admin) redirect("/admin/login");
+  if (!admin) redirect("/login");
 
   const [entries, tags, types] = await Promise.all([
     adminFetchEntries(),

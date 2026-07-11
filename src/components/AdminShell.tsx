@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import UserMenu from "@/components/UserMenu";
 
 //  导航项定义
@@ -51,24 +50,6 @@ export default function AdminShell({
   email: string;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [checked, setChecked] = useState(false);
-
-  // 未登录则跳转（客户端双重校验）
-  useEffect(() => {
-    fetch("/api/admin/me").then((r) => {
-      if (!r.ok) router.replace("/admin/login");
-      else setChecked(true);
-    });
-  }, [router]);
-
-  if (!checked) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: 14, color: "var(--fg-muted)" }}>
-        加载中...
-      </div>
-    );
-  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>

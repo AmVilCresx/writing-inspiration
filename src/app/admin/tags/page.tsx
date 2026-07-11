@@ -5,7 +5,7 @@ import { adminFetchTags } from "@/data/admin";
 
 export default async function TagsPage() {
   const admin = await verifyAdminCookie();
-  if (!admin) redirect("/admin/login");
+  if (!admin) redirect("/login");
 
   const tags = await adminFetchTags();
 

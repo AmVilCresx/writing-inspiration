@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useModal } from "@/components/Modal";
 
 export default function ChangePasswordPage() {
@@ -35,7 +36,7 @@ export default function ChangePasswordPage() {
       }
 
       await alert({ message: "密码修改成功，请重新登录" });
-      router.push("/admin/login");
+      router.push("/login");
     } catch {
       setError("网络错误");
     } finally {
@@ -47,6 +48,11 @@ export default function ChangePasswordPage() {
 
   return (
     <div style={{ maxWidth: 400, margin: "0 auto", paddingTop: 40 }}>
+      <Link href="/admin/entries" style={{ fontSize: 13, color: "var(--fg-muted)", display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 40, textDecoration: "none" }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
+        返回后台
+      </Link>
+
       <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 28px", color: "var(--fg)" }}>修改密码</h1>
 
       <div style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)", borderRadius: 16, padding: "32px 28px", boxShadow: "0 8px 32px rgba(0,0,0,0.06)" }}>

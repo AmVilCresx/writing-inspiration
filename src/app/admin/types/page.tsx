@@ -5,7 +5,7 @@ import { adminFetchTypes } from "@/data/admin";
 
 export default async function TypesPage() {
   const admin = await verifyAdminCookie();
-  if (!admin) redirect("/admin/login");
+  if (!admin) redirect("/login");
 
   const types = await adminFetchTypes();
 
