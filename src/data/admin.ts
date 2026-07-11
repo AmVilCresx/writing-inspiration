@@ -10,9 +10,9 @@ export interface AdminEntry {
   source: string | null;
   author: string | null;
   example: string | null;
-  mood: string | null;
   hidden: boolean;
   tagIds: number[];
+  updated_at: string;
 }
 
 export interface AdminTag {
@@ -26,7 +26,7 @@ export interface AdminTag {
 
 export async function adminFetchEntries(): Promise<AdminEntry[]> {
   const [{ data: entries, error: e1 }, { data: etRows, error: e2 }] = await Promise.all([
-    supabaseService.from("wi_entries").select("*").order("id", { ascending: true }),
+    supabaseService.from("wi_entries").select("*").order("updated_at", { ascending: false }),
     supabaseService.from("wi_entry_tags").select("entry_id, tag_id"),
   ]);
 
@@ -51,9 +51,9 @@ export async function adminFetchEntries(): Promise<AdminEntry[]> {
     source: row.source,
     author: row.author,
     example: row.example,
-    mood: row.mood,
     hidden: row.hidden || false,
     tagIds: tagIdsByEntry.get(row.id) || [],
+    updated_at: row.updated_at,
   }));
 }
 
@@ -124,7 +124,7 @@ export async function adminUpdateEntry(id: number, entry: Omit<AdminEntry, "id">
   if (tagIds.length > 0) {
     const tagsToInsert = tagIds.map((tag_id: number) => ({ entry_id: id, tag_id }));
     const { error: insertErr } = await supabaseService
-      .rpc("wi_upsert_entry_tags", { rows: JSON.stringify(tagsToInsert) });
+      .rpc("wi_upsert_entry_tags", { rows_json: JSON.stringify(tagsToInsert) });
     if (insertErr) {
       console.error("adminUpdateEntry tags insert error:", insertErr);
       return false;
@@ -163,7 +163,7 @@ export async function adminFetchTags(): Promise<AdminTag[]> {
   const { data, error } = await supabaseService
     .from("wi_tags")
     .select("*")
-    .order("name", { ascending: true });
+    .order("id", { ascending: true });
 
   if (error) {
     console.error("adminFetchTags error:", error);

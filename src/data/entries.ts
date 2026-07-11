@@ -10,8 +10,32 @@ export interface Entry {
   source: string | null;
   author: string | null;
   example: string | null;
-  mood: string | null;
   tags: Tag[];
+}
+
+/**
+ * 获取一个随机条目（用于首页首屏展示）
+ */
+export async function fetchRandomEntry(): Promise<Entry | null> {
+  const { count } = await supabaseAnon
+    .from("wi_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("hidden", false);
+
+  if (!count || count === 0) return null;
+
+  const randomOffset = Math.floor(Math.random() * count);
+  const { data } = await supabaseAnon
+    .from("wi_entries")
+    .select("*")
+    .eq("hidden", false)
+    .range(randomOffset, randomOffset)
+    .single();
+
+  if (!data) return null;
+
+  const tags = await fetchTagsForEntries([data.id]);
+  return mapEntry(data, tags.get(data.id) || []);
 }
 
 export interface Tag {
@@ -73,7 +97,6 @@ function mapEntry(row: any, tags: Tag[] = []): Entry {
     source: row.source,
     author: row.author,
     example: row.example,
-    mood: row.mood,
     tags,
   };
 }
@@ -84,11 +107,10 @@ function mapEntry(row: any, tags: Tag[] = []): Entry {
 export async function fetchEntries(params?: {
   query?: string;
   type?: string;
-  mood?: string;
   limit?: number;
   offset?: number;
 }): Promise<Entry[]> {
-  const { query, type, mood, limit, offset } = params || {};
+  const { query, type, limit, offset } = params || {};
 
   let builder = supabaseAnon
     .from("wi_entries")
@@ -97,7 +119,6 @@ export async function fetchEntries(params?: {
     .order("id", { ascending: true });
 
   if (type) builder = builder.eq("type", type);
-  if (mood) builder = builder.eq("mood", mood);
 
   // 搜索：标题、释义、出处、作者、例句
   if (query) {
@@ -107,8 +128,9 @@ export async function fetchEntries(params?: {
     );
   }
 
-  if (limit) builder = builder.limit(limit);
-  if (offset) builder = builder.range(offset, offset + limit - 1);
+  const effectiveLimit = limit ?? 50;
+  builder = builder.limit(effectiveLimit);
+  if (offset) builder = builder.range(offset, offset + effectiveLimit - 1);
 
   // 先查主表
   const { data, error } = await builder;
@@ -212,23 +234,6 @@ export async function fetchRelated(entry: Entry): Promise<Entry[]> {
     .sort((a, b) => b._shared - a._shared)
     .slice(0, 5)
     .map(({ _shared, ...e }) => e);
-}
-
-/**
- * 获取所有氛围值
- */
-export async function fetchAllMoods(): Promise<string[]> {
-  const { data } = await supabaseAnon
-    .from("wi_entries")
-    .select("mood")
-    .not("mood", "is", null);
-
-  if (!data) return [];
-  const set = new Set<string>();
-  data.forEach((row: any) => {
-    if (row.mood) set.add(row.mood);
-  });
-  return Array.from(set).sort();
 }
 
 /**

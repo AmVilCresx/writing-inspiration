@@ -1,21 +1,21 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { verifyAdminCookie } from "@/lib/auth";
 import { ModalProvider } from "@/components/Modal";
+import AdminShell from "@/components/AdminShell";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const admin = verifyAdminCookie();
+  if (!admin) redirect("/admin/login");
+
   return (
     <ModalProvider>
-      <main style={{ width: "90%", maxWidth: 960, margin: "0 auto", padding: "48px 0 80px" }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 48 }}>
-          <Link href="/" style={{ fontSize: 13, color: "var(--fg-muted)", letterSpacing: 0.04, textDecoration: "none" }}>
-            ← 回到前台
-          </Link>
-        </header>
+      <AdminShell email={admin.email}>
         {children}
-      </main>
+      </AdminShell>
     </ModalProvider>
   );
 }

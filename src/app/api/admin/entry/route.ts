@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   if (!verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const body = await req.json();
-  const { type, title, meaning, source, author, example, mood, tagIds } = body;
+  const { type, title, meaning, source, author, example, tagIds } = body;
 
   if (!type || !title) {
     return NextResponse.json({ error: "类型和标题不能为空" }, { status: 400 });
@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
     source: source || null,
     author: author || null,
     example: example || null,
-    mood: mood || null,
     tagIds: tagIds || [],
   });
 
@@ -33,7 +32,7 @@ export async function PUT(req: NextRequest) {
   if (!verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const body = await req.json();
-  const { id, type, title, meaning, source, author, example, mood, tagIds } = body;
+  const { id, type, title, meaning, source, author, example, tagIds } = body;
 
   if (!id || !type || !title) {
     return NextResponse.json({ error: "参数不完整" }, { status: 400 });
@@ -46,7 +45,6 @@ export async function PUT(req: NextRequest) {
     source: source || null,
     author: author || null,
     example: example || null,
-    mood: mood || null,
     tagIds: tagIds || [],
   });
 

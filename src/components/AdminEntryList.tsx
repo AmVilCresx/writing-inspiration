@@ -4,29 +4,14 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useModal } from "@/components/Modal";
 import type { AdminEntry, AdminTag, AdminType } from "@/data/admin";
-
-//  ── 标签调色板 ──
-const TAG_COLORS = [
-  { bg: "rgba(220,235,250,0.6)", fg: "#3a6fa0" },
-  { bg: "rgba(250,225,220,0.6)", fg: "#a05a3a" },
-  { bg: "rgba(230,245,225,0.6)", fg: "#4a8a3a" },
-  { bg: "rgba(245,230,250,0.6)", fg: "#8a4a9a" },
-  { bg: "rgba(250,240,210,0.6)", fg: "#9a7a2a" },
-  { bg: "rgba(220,245,240,0.6)", fg: "#3a8a7a" },
-  { bg: "rgba(250,220,240,0.6)", fg: "#a03a8a" },
-  { bg: "rgba(235,230,250,0.6)", fg: "#6a4aaa" },
-];
-
-function getTagColor(tagId: number) {
-  return TAG_COLORS[tagId % TAG_COLORS.length];
-}
+import { getTagColor } from "@/lib/colors";
 
 type ToastType = "success" | "error" | "info";
 
 //  ── 组件 ──
 export default function AdminEntryList({
   entries: initialEntries,
-  tags: allTags,
+  tags,
   types,
 }: {
   entries: AdminEntry[];
@@ -47,10 +32,15 @@ export default function AdminEntryList({
   useEffect(() => { setEntries(initialEntries); }, [initialEntries]);
 
   //  showToast 工具函数
+  const [toastExiting, setToastExiting] = useState(false);
   const showToast = (msg: string, type: ToastType = "info") => {
     setToast({ msg, type });
+    setToastExiting(false);
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2000);
+    toastTimer.current = setTimeout(() => {
+      setToastExiting(true);
+      setTimeout(() => { setToast(null); setToastExiting(false); }, 300);
+    }, 2000);
   };
 
   // 带 loading 的请求封装
@@ -69,12 +59,35 @@ export default function AdminEntryList({
     source: "",
     author: "",
     example: "",
-    mood: "",
     tagIds: [] as number[],
   });
 
+  //  筛选
+  const [filterType, setFilterType] = useState("");
+  const [filterTag, setFilterTag] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");   // all | hidden | visible
+  const [filterQ, setFilterQ] = useState("");
+
+  const filteredEntries = entries.filter((e) => {
+    if (filterType && e.type !== filterType) return false;
+    if (filterTag && !e.tagIds.includes(Number(filterTag))) return false;
+    if (filterStatus === "hidden" && !e.hidden) return false;
+    if (filterStatus === "visible" && e.hidden) return false;
+    if (filterQ && !e.title.includes(filterQ) && !(e.meaning || "").includes(filterQ)) return false;
+    return true;
+  });
+
+  //  分页
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedEntries = filteredEntries.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  // 筛选或数据变化时重置到第一页
+  useEffect(() => { setPage(1); }, [filteredEntries.length, filterType, filterTag, filterStatus, filterQ]);
+
   const resetForm = () => {
-    setForm({ type: types[0]?.name || "成语", title: "", meaning: "", source: "", author: "", example: "", mood: "", tagIds: [] });
+    setForm({ type: types[0]?.name || "成语", title: "", meaning: "", source: "", author: "", example: "", tagIds: [] });
   };
 
   const openAdd = () => {
@@ -91,7 +104,6 @@ export default function AdminEntryList({
       source: entry.source || "",
       author: entry.author || "",
       example: entry.example || "",
-      mood: entry.mood || "",
       tagIds: entry.tagIds,
     });
     setEditing(entry);
@@ -147,7 +159,7 @@ export default function AdminEntryList({
 
   //  ── 获取所有标签名称（用于展示） ──
   const tagMap = new Map<number, string>();
-  allTags.forEach((t) => tagMap.set(t.id, t.name));
+  tags.forEach((t) => tagMap.set(t.id, t.name));
 
   //  ── 表单 ──
   if (showForm) {
@@ -158,17 +170,11 @@ export default function AdminEntryList({
       <form onSubmit={handleSave} style={{ marginBottom: 48 }}>
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 28, color: "var(--fg)" }}>{editing ? "编辑条目" : "新增条目"}</h2>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
-          <div>
-            <label style={lbl}>类型</label>
-            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={s}>
-              {types.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lbl}>情感氛围</label>
-            <input value={form.mood} onChange={(e) => setForm({ ...form, mood: e.target.value })} placeholder="如：励志、豪迈、讽刺" maxLength={20} style={s} />
-          </div>
+        <div>
+          <label style={lbl}>类型</label>
+          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={s}>
+            {types.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
+          </select>
         </div>
 
         <label style={lbl}>标题 / 条目名</label>
@@ -191,18 +197,22 @@ export default function AdminEntryList({
         <label style={lbl}>例句</label>
         <textarea value={form.example} onChange={(e) => setForm({ ...form, example: e.target.value })} rows={2} maxLength={200} style={{ ...s, resize: "vertical" }} />
 
-        <label style={lbl}>标签</label>
+        <label style={lbl}>标签 <span style={{ color: "var(--fg-muted)", fontWeight: 400 }}>（最多 5 个，已选 {form.tagIds.length}/5）</span></label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
-          {allTags.map((tag) => (
-            <label key={tag.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, cursor: "pointer", padding: "5px 14px", borderRadius: 14, background: form.tagIds.includes(tag.id) ? "var(--fg)" : "rgba(255,255,255,0.35)", color: form.tagIds.includes(tag.id) ? "#fff" : "var(--fg)", border: `1px solid ${form.tagIds.includes(tag.id) ? "var(--fg)" : "rgba(255,255,255,0.4)"}`, transition: "all 0.2s", fontWeight: form.tagIds.includes(tag.id) ? 500 : 400 }}>
-              <input type="checkbox" checked={form.tagIds.includes(tag.id)} onChange={(e) => { const ids = e.target.checked ? [...form.tagIds, tag.id] : form.tagIds.filter((id) => id !== tag.id); setForm({ ...form, tagIds: ids }); }} style={{ display: "none" }} />
-              {tag.name}
-            </label>
-          ))}
+          {tags.map((tag) => {
+            const selected = form.tagIds.includes(tag.id);
+            const maxReached = form.tagIds.length >= 5 && !selected;
+            return (
+              <label key={tag.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, cursor: maxReached ? "not-allowed" : "pointer", padding: "5px 14px", borderRadius: 14, background: selected ? "var(--fg)" : "rgba(255,255,255,0.35)", color: selected ? "#fff" : "var(--fg)", border: `1px solid ${selected ? "var(--fg)" : "rgba(255,255,255,0.4)"}`, transition: "all 0.2s", fontWeight: selected ? 500 : 400, opacity: maxReached ? 0.4 : 1 }}>
+                <input type="checkbox" checked={selected} disabled={maxReached} onChange={(e) => { const ids = e.target.checked ? [...form.tagIds, tag.id] : form.tagIds.filter((id) => id !== tag.id); setForm({ ...form, tagIds: ids }); }} style={{ display: "none" }} />
+                {tag.name}
+              </label>
+            );
+          })}
         </div>
 
         <div style={{ display: "flex", gap: 12 }}>
-          <button type="submit" disabled={isPending} style={{ padding: "10px 28px", border: "none", background: "var(--fg)", color: "#fff", fontFamily: "inherit", fontSize: 14, fontWeight: 500, cursor: "pointer", borderRadius: 10, opacity: isPending ? 0.7 : 1 }}>{isPending ? "保存中..." : "保存"}</button>
+          <button type="submit" disabled={loading} style={{ padding: "10px 28px", border: "none", background: "var(--fg)", color: "#fff", fontFamily: "inherit", fontSize: 14, fontWeight: 500, cursor: loading ? "not-allowed" : "pointer", borderRadius: 10, opacity: loading ? 0.6 : 1 }}>{loading ? "保存中..." : "保存"}</button>
           <button type="button" onClick={() => { setShowForm(false); resetForm(); }} style={{ padding: "10px 28px", border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.5)", fontFamily: "inherit", fontSize: 14, color: "var(--fg-dim)", cursor: "pointer", borderRadius: 10 }}>取消</button>
         </div>
       </form>
@@ -221,19 +231,74 @@ export default function AdminEntryList({
 
       {/* Toast 提示 */}
       {toast && (
-        <div style={{ position: "fixed", top: 24, left: "50%", transform: "translateX(-50%)", zIndex: 1000, padding: "10px 24px", borderRadius: 12, fontSize: 14, fontWeight: 500, letterSpacing: "0.04em", color: toast.type === "success" ? "#3aaf5e" : toast.type === "error" ? "#c04040" : "#4a8ab0", background: "none", animation: "fadeDown 0.3s ease" }}>
+        <div
+          style={{
+            position: "fixed",
+            top: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            padding: "12px 28px",
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 400,
+            letterSpacing: "0.04em",
+            color: toast.type === "success" ? "#2a7a3e" : toast.type === "error" ? "#a03030" : "#3a7a9a",
+            background: "linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)",
+            border: "1px solid rgba(255,255,255,0.6)",
+            animation: toastExiting ? "toastSlideUp 0.3s cubic-bezier(0.7, 0, 0.84, 1) forwards" : "toastSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
+          {toast.type === "success" && <span style={{ marginRight: 8 }}>✓</span>}
+          {toast.type === "error" && <span style={{ marginRight: 8 }}>✕</span>}
+          {toast.type === "info" && <span style={{ marginRight: 8 }}>ℹ</span>}
           {toast.msg}
         </div>
       )}
 
       <div style={{ marginBottom: 48 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 24 }}>
-          <p style={{ fontSize: 13, color: "var(--fg-muted)", margin: 0 }}>共 {entries.length} 条素材（{entries.filter((e) => e.hidden).length} 条已隐藏）</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: "var(--fg-muted)", margin: 0 }}>
+            共 {filteredEntries.length} 条素材（{entries.filter((e) => e.hidden).length} 条已隐藏）
+            {filteredEntries.length > PAGE_SIZE && <span> · 第 {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filteredEntries.length)} 条</span>}
+          </p>
           <button onClick={openAdd} style={{ padding: "8px 20px", border: "none", background: "var(--fg)", color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 500, cursor: "pointer", borderRadius: 10 }}>+ 新增</button>
         </div>
 
+        {/*  筛选区 */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+          <input
+            placeholder="搜索标题 / 释义"
+            value={filterQ}
+            onChange={(e) => setFilterQ(e.target.value)}
+            style={{ flex: 1, minWidth: 160, padding: "8px 14px", border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.5)", fontSize: 13, outline: "none", borderRadius: 10, color: "var(--fg)", fontFamily: "inherit", backdropFilter: "blur(8px)" }}
+          />
+          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ padding: "8px 14px", border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.5)", fontSize: 13, outline: "none", borderRadius: 10, color: "var(--fg)", fontFamily: "inherit", cursor: "pointer" }}>
+            <option value="">全部类型</option>
+            {types.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
+          </select>
+          <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)} style={{ padding: "8px 14px", border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.5)", fontSize: 13, outline: "none", borderRadius: 10, color: "var(--fg)", fontFamily: "inherit", cursor: "pointer" }}>
+            <option value="">全部标签</option>
+            {tags.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: "8px 14px", border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.5)", fontSize: 13, outline: "none", borderRadius: 10, color: "var(--fg)", fontFamily: "inherit", cursor: "pointer" }}>
+            <option value="all">全部状态</option>
+            <option value="visible">已发布</option>
+            <option value="hidden">已隐藏</option>
+          </select>
+          {(filterQ || filterType || filterTag || filterStatus !== "all") && (
+            <button onClick={() => { setFilterQ(""); setFilterType(""); setFilterTag(""); setFilterStatus("all"); }} style={{ padding: "8px 14px", border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.4)", fontSize: 13, color: "var(--fg-dim)", cursor: "pointer", borderRadius: 10, fontFamily: "inherit" }}>重置</button>
+          )}
+        </div>
+
         <div style={{ background: "rgba(255,255,255,0.45)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.5)", boxShadow: "var(--shadow-sm)" }}>
-          {entries.map((entry, i) => (
+          {pagedEntries.length === 0 ? (
+            <div className="empty">没有符合条件的条目</div>
+          ) : (
+            pagedEntries.map((entry, i) => (
             <div
               key={entry.id}
               style={{
@@ -291,8 +356,32 @@ export default function AdminEntryList({
                 <button onClick={() => handleDelete(entry.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ba5252", padding: 0, fontFamily: "inherit", fontWeight: 500 }}>删除</button>
               </div>
             </div>
-          ))}
+          ))
+        )}
         </div>
+
+        {/*  分页控件 */}
+        {totalPages > 1 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 24 }}>
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.4)", fontSize: 13, color: "var(--fg)", borderRadius: 8, cursor: safePage <= 1 ? "not-allowed" : "pointer", opacity: safePage <= 1 ? 0.4 : 1, fontFamily: "inherit", transition: "all 0.2s" }}
+            >
+              上一页
+            </button>
+            <span style={{ fontSize: 13, color: "var(--fg-dim)", minWidth: 60, textAlign: "center" }}>
+              {safePage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              style={{ padding: "6px 14px", border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.4)", fontSize: 13, color: "var(--fg)", borderRadius: 8, cursor: safePage >= totalPages ? "not-allowed" : "pointer", opacity: safePage >= totalPages ? 0.4 : 1, fontFamily: "inherit", transition: "all 0.2s" }}
+            >
+              下一页
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

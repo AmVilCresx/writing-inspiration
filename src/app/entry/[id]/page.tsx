@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchEntryById, fetchRelated } from "@/data/entries";
 import { notFound } from "next/navigation";
+import { getTagColor } from "@/lib/colors";
 
 export default async function EntryPage({
   params,
@@ -45,9 +46,19 @@ export default async function EntryPage({
           <div className="related">
             <h2>标签</h2>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {entry.tags.map((t) => (
-                <Link key={t.id} href={`/?mood=${t.name}`} className="tag-link">{t.name}</Link>
-              ))}
+              {entry.tags.map((t) => {
+                const color = getTagColor(t.id);
+                return (
+                  <Link
+                    key={t.id}
+                    href={`/?tag=${t.name}`}
+                    className="tag-link"
+                    style={{ background: color.bg, color: color.fg, borderColor: color.bg }}
+                  >
+                    {t.name}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
