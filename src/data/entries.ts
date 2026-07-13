@@ -1,55 +1,11 @@
 import "server-only";
 import { supabaseAnon } from "@/lib/supabase";
+import type { Entry, Tag } from "@/lib/types";
 
-//  Entry 类型与数据库 wi_entries 表对应
-export interface Entry {
-  id: number;
-  type: "成语" | "名言" | "俗语" | "诗词" | "歇后语";
-  title: string;
-  meaning: string | null;
-  source: string | null;
-  author: string | null;
-  example: string | null;
-  tags: Tag[];
-}
-
-/**
- * 获取一个随机条目（用于首页首屏展示）
- */
-export async function fetchRandomEntry(): Promise<Entry | null> {
-  const { count } = await supabaseAnon
-    .from("wi_entries")
-    .select("id", { count: "exact", head: true })
-    .eq("hidden", false);
-
-  if (!count || count === 0) return null;
-
-  const randomOffset = Math.floor(Math.random() * count);
-  const { data } = await supabaseAnon
-    .from("wi_entries")
-    .select("*")
-    .eq("hidden", false)
-    .range(randomOffset, randomOffset)
-    .single();
-
-  if (!data) return null;
-
-  const tags = await fetchTagsForEntries([data.id]);
-  return mapEntry(data, tags.get(data.id) || []);
-}
-
-export interface Tag {
-  id: number;
-  name: string;
-}
-
-/**
- * 批量获取条目的标签信息
- */
+//  标签辅助查询
 async function fetchTagsForEntries(entryIds: number[]): Promise<Map<number, Tag[]>> {
   if (entryIds.length === 0) return new Map();
 
-  // 先查关联表
   const { data: etRows, error: etError } = await supabaseAnon
     .from("wi_entry_tags")
     .select("entry_id, tag_id")
@@ -59,7 +15,6 @@ async function fetchTagsForEntries(entryIds: number[]): Promise<Map<number, Tag[
     return new Map(entryIds.map((id) => [id, []]));
   }
 
-  // 再查标签名
   const tagIds = [...new Set(etRows.map((r) => r.tag_id))];
   const { data: tagRows, error: tagError } = await supabaseAnon
     .from("wi_tags")
@@ -73,7 +28,6 @@ async function fetchTagsForEntries(entryIds: number[]): Promise<Map<number, Tag[
   const tagMap = new Map<number, Tag>();
   tagRows.forEach((t) => tagMap.set(t.id, { id: t.id, name: t.name }));
 
-  // 按 entry_id 分组
   const result = new Map<number, Tag[]>();
   entryIds.forEach((id) => result.set(id, []));
 
@@ -101,9 +55,23 @@ function mapEntry(row: any, tags: Tag[] = []): Entry {
   };
 }
 
-/**
- * 从数据库获取条目列表（带标签）
- */
+//  获取随机条目 —— 改用 limit(100) + 随机挑选，避免 count(*) 全表扫描
+export async function fetchRandomEntry(): Promise<Entry | null> {
+  const { data } = await supabaseAnon
+    .from("wi_entries")
+    .select("*")
+    .eq("hidden", false)
+    .limit(100)
+    .order("id", { ascending: true });
+
+  if (!data || data.length === 0) return null;
+
+  const row = data[Math.floor(Math.random() * data.length)];
+  const tags = await fetchTagsForEntries([row.id]);
+  return mapEntry(row, tags.get(row.id) || []);
+}
+
+//  获取条目列表（带标签）
 export async function fetchEntries(params?: {
   query?: string;
   type?: string;
@@ -120,7 +88,6 @@ export async function fetchEntries(params?: {
 
   if (type) builder = builder.eq("type", type);
 
-  // 搜索：标题、释义、出处、作者、例句
   if (query) {
     const q = query.trim();
     builder = builder.or(
@@ -132,7 +99,6 @@ export async function fetchEntries(params?: {
   builder = builder.limit(effectiveLimit);
   if (offset) builder = builder.range(offset, offset + effectiveLimit - 1);
 
-  // 先查主表
   const { data, error } = await builder;
   if (error) {
     console.error("fetchEntries error:", error);
@@ -141,18 +107,15 @@ export async function fetchEntries(params?: {
 
   let entries = (data || []) as any[];
 
-  // 如果有搜索词，额外从标签匹配
+  // 搜索词额外匹配标签
   if (query) {
     const q = query.trim();
-
-    // 1. 查出匹配的标签
     const { data: matchedTags } = await supabaseAnon
       .from("wi_tags")
       .select("id")
       .ilike("name", `%${q}%`);
 
     if (matchedTags && matchedTags.length > 0) {
-      // 2. 找出关联了这些标签的 entry_id
       const tagIds = matchedTags.map((t) => t.id);
       const { data: etRows } = await supabaseAnon
         .from("wi_entry_tags")
@@ -160,7 +123,6 @@ export async function fetchEntries(params?: {
         .in("tag_id", tagIds);
 
       if (etRows && etRows.length > 0) {
-        // 3. 查这些 entry
         const matchedEntryIds = [...new Set(etRows.map((r) => r.entry_id))];
         const { data: tagMatchedEntries } = await supabaseAnon
           .from("wi_entries")
@@ -170,7 +132,6 @@ export async function fetchEntries(params?: {
           .order("id", { ascending: true });
 
         if (tagMatchedEntries) {
-          // 4. 合并去重
           const existingIds = new Set(entries.map((e) => e.id));
           tagMatchedEntries.forEach((e: any) => {
             if (!existingIds.has(e.id)) entries.push(e);
@@ -186,9 +147,7 @@ export async function fetchEntries(params?: {
   return entries.map((row) => mapEntry(row, tagsMap.get(row.id) || []));
 }
 
-/**
- * 获取单条条目（详情页）
- */
+//  获取单条条目
 export async function fetchEntryById(id: string): Promise<Entry | null> {
   const { data, error } = await supabaseAnon
     .from("wi_entries")
@@ -203,9 +162,7 @@ export async function fetchEntryById(id: string): Promise<Entry | null> {
   return mapEntry(data, tagsMap.get(data.id) || []);
 }
 
-/**
- * 获取相关推荐（同类型或共享标签）
- */
+//  获取相关推荐（同类型或共享标签）
 export async function fetchRelated(entry: Entry): Promise<Entry[]> {
   const tagIds = entry.tags.map((t) => t.id);
 
@@ -236,9 +193,7 @@ export async function fetchRelated(entry: Entry): Promise<Entry[]> {
     .map(({ _shared, ...e }) => e);
 }
 
-/**
- * 获取所有类型
- */
+//  获取所有类型
 export async function fetchTypes(): Promise<{ id: number; name: string }[]> {
   const { data, error } = await supabaseAnon
     .from("wi_types")
@@ -252,9 +207,7 @@ export async function fetchTypes(): Promise<{ id: number; name: string }[]> {
   return data || [];
 }
 
-/**
- * 获取标签总数和条目总数
- */
+//  获取标签总数和条目总数
 export async function fetchCounts(): Promise<{ entries: number; tags: number }> {
   const [{ count: entries }, { count: tags }] = await Promise.all([
     supabaseAnon.from("wi_entries").select("*", { count: "exact", head: true }),

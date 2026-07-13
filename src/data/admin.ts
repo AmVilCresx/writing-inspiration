@@ -1,28 +1,8 @@
 import "server-only";
 import { supabaseService } from "@/lib/supabase";
+import type { AdminEntry, AdminTag, AdminType } from "@/lib/types";
 
-//  条目类型
-export interface AdminEntry {
-  id: number;
-  type: string;
-  title: string;
-  meaning: string | null;
-  source: string | null;
-  author: string | null;
-  example: string | null;
-  hidden: boolean;
-  tagIds: number[];
-  updated_at?: string;
-}
-
-export interface AdminTag {
-  id: number;
-  name: string;
-}
-
-//  ──────────────────────────────────────────────
-//  条目 CRUD
-//  ──────────────────────────────────────────────
+//  ── 条目 CRUD ──
 
 export async function adminFetchEntries(): Promise<AdminEntry[]> {
   const [{ data: entries, error: e1 }, { data: etRows, error: e2 }] = await Promise.all([
@@ -35,7 +15,6 @@ export async function adminFetchEntries(): Promise<AdminEntry[]> {
     return [];
   }
 
-  // 按 entry_id 分组 tag_id
   const tagIdsByEntry = new Map<number, number[]>();
   (etRows || []).forEach((row: any) => {
     const list = tagIdsByEntry.get(row.entry_id) || [];
@@ -71,14 +50,12 @@ export async function adminCreateEntry(entry: Omit<AdminEntry, "id">): Promise<A
     return null;
   }
 
-  // 写入关联（失败时回滚：删除已创建的条目）
   if (tagIds.length > 0) {
     const { error: tagError } = await supabaseService.from("wi_entry_tags").insert(
       tagIds.map((tag_id) => ({ entry_id: data.id, tag_id }))
     );
     if (tagError) {
       console.error("adminCreateEntry tags error:", tagError);
-      // 回滚：删除刚才创建的条目
       await supabaseService.from("wi_entries").delete().eq("id", data.id);
       return null;
     }
@@ -100,8 +77,7 @@ export async function adminUpdateEntry(id: number, entry: Omit<AdminEntry, "id">
     return false;
   }
 
-  // 安全替换标签关联：先删旧再插入新（任何一步失败都不会丢失数据）
-  // 1. 删除需要移除的旧关联
+  // 替换标签关联
   const { data: oldRows } = await supabaseService
     .from("wi_entry_tags")
     .select("tag_id")
@@ -120,7 +96,6 @@ export async function adminUpdateEntry(id: number, entry: Omit<AdminEntry, "id">
     }
   }
 
-  // 2. 插入新增的关联（ON CONFLICT DO NOTHING 避免主键冲突）
   if (tagIds.length > 0) {
     const tagsToInsert = tagIds.map((tag_id: number) => ({ entry_id: id, tag_id }));
     const { error: insertErr } = await supabaseService
@@ -155,9 +130,7 @@ export async function adminDeleteEntry(id: number): Promise<boolean> {
   return true;
 }
 
-//  ──────────────────────────────────────────────
-//  标签管理
-//  ──────────────────────────────────────────────
+//  ── 标签管理 ──
 
 export async function adminFetchTags(): Promise<AdminTag[]> {
   const { data, error } = await supabaseService
@@ -169,18 +142,33 @@ export async function adminFetchTags(): Promise<AdminTag[]> {
     console.error("adminFetchTags error:", error);
     return [];
   }
-
   return data || [];
 }
 
-//  ──────────────────────────────────────────────
-//  类型管理
-//  ──────────────────────────────────────────────
+export async function adminCreateTag(name: string): Promise<AdminTag | null> {
+  const { data, error } = await supabaseService
+    .from("wi_tags")
+    .insert({ name })
+    .select()
+    .single();
 
-export interface AdminType {
-  id: number;
-  name: string;
+  if (error) {
+    console.error("adminCreateTag error:", error);
+    return null;
+  }
+  return data;
 }
+
+export async function adminDeleteTag(id: number): Promise<boolean> {
+  const { error } = await supabaseService.from("wi_tags").delete().eq("id", id);
+  if (error) {
+    console.error("adminDeleteTag error:", error);
+    return false;
+  }
+  return true;
+}
+
+//  ── 类型管理 ──
 
 export async function adminFetchTypes(): Promise<AdminType[]> {
   const { data, error } = await supabaseService
@@ -213,29 +201,6 @@ export async function adminDeleteType(id: number): Promise<boolean> {
   const { error } = await supabaseService.from("wi_types").delete().eq("id", id);
   if (error) {
     console.error("adminDeleteType error:", error);
-    return false;
-  }
-  return true;
-}
-
-export async function adminCreateTag(name: string): Promise<AdminTag | null> {
-  const { data, error } = await supabaseService
-    .from("wi_tags")
-    .insert({ name })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("adminCreateTag error:", error);
-    return null;
-  }
-  return data;
-}
-
-export async function adminDeleteTag(id: number): Promise<boolean> {
-  const { error } = await supabaseService.from("wi_tags").delete().eq("id", id);
-  if (error) {
-    console.error("adminDeleteTag error:", error);
     return false;
   }
   return true;

@@ -1,9 +1,8 @@
 import HomeClient from "@/components/HomeClient";
 import { fetchEntries, fetchTypes, fetchRandomEntry } from "@/data/entries";
+import { PUBLIC_PAGE_SIZE } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
-
-const PAGE_SIZE = 50;
 
 export default async function HomePage({
   searchParams,
@@ -19,13 +18,13 @@ export default async function HomePage({
     fetchEntries({
       query: q || undefined,
       type: type || undefined,
-      limit: PAGE_SIZE + 1,
-      offset: (page - 1) * PAGE_SIZE,
+      limit: PUBLIC_PAGE_SIZE + 1,
+      offset: (page - 1) * PUBLIC_PAGE_SIZE,
     }),
   ]);
 
-  const hasMore = entriesResult.length > PAGE_SIZE;
-  const entries = entriesResult.slice(0, PAGE_SIZE);
+  const hasMore = entriesResult.length > PUBLIC_PAGE_SIZE;
+  const entries = entriesResult.slice(0, PUBLIC_PAGE_SIZE);
   const totalPages = hasMore ? page + 1 : page;
 
   return (

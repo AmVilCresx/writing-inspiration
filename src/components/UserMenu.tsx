@@ -16,6 +16,11 @@ export default function UserMenu({ email }: { email: string }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" });
+    window.location.assign("/login");
+  };
+
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button
@@ -80,21 +85,19 @@ export default function UserMenu({ email }: { email: string }) {
             </svg>
             修改密码
           </a>
-          <form action="/api/admin/logout" method="POST">
-            <button
-              type="submit"
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", border: "none", background: "transparent", fontFamily: "inherit", fontSize: 13, color: "#ba5252", cursor: "pointer", textAlign: "left", transition: "background 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(250,220,220,0.4)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ opacity: 0.5 }}>
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <path d="m16 17 5-5-5-5" />
-                <path d="M21 12H9" />
-              </svg>
-              退出登录
-            </button>
-          </form>
+          <button
+            onClick={handleLogout}
+            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", border: "none", background: "transparent", fontFamily: "inherit", fontSize: 13, color: "#ba5252", cursor: "pointer", textAlign: "left", transition: "background 0.15s" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(250,220,220,0.4)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ opacity: 0.5 }}>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <path d="m16 17 5-5-5-5" />
+              <path d="M21 12H9" />
+            </svg>
+            退出登录
+          </button>
         </div>
       )}
     </div>

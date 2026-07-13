@@ -1,10 +1,12 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { supabaseService } from "./supabase";
+import { COOKIE_NAME, SESSION_MAX_AGE } from "./constants";
 
-const JWT_SECRET = process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback-secret";
-const COOKIE_NAME = "wi_admin_token";
-const MAX_AGE = 60 * 60 * 24 * 7; // 7 天
+const JWT_SECRET = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!JWT_SECRET) {
+  throw new Error("缺少环境变量 SUPABASE_SERVICE_ROLE_KEY");
+}
 
 export interface AdminPayload {
   email: string;
@@ -27,25 +29,9 @@ export async function verifyAdmin(
 
   if (error || !data) return null;
 
-  // bcrypt 校验（动态导入避免服务端/客户端问题）
   const bcrypt = await import("bcryptjs");
   const ok = await bcrypt.compare(password, data.password_hash);
   return ok ? { email: data.email } : null;
-}
-
-/**
- * 签发 JWT 并写入 Cookie
- */
-export async function createAdminCookie(email: string) {
-  const token = jwt.sign({ email }, JWT_SECRET, { expiresIn: "7d" });
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: MAX_AGE,
-    path: "/",
-  });
 }
 
 /**
@@ -61,12 +47,4 @@ export async function verifyAdminCookie(): Promise<AdminPayload | null> {
   } catch {
     return null;
   }
-}
-
-/**
- * 清除登录态
- */
-export async function clearAdminCookie() {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
 }

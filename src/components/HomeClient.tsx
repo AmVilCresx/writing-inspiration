@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import SearchBox from "@/components/SearchBox";
-import type { Entry, Tag } from "@/data/entries";
+import type { Entry, Tag } from "@/lib/types";
 import { TAG_COLORS } from "@/lib/colors";
 
 const TYPE_COLORS = [
   "#e8f0e4", "#e4ecf0", "#f0ebe4", "#e8e4f0", "#f0e4ec",
   "#e4e8f0", "#f0e8e4", "#ebe4f0", "#e4f0e8", "#f0ebe8",
 ];
+
+//  骨架屏尺寸（模拟随机药丸宽度）
+const SKELETON_WIDTHS = [72, 96, 84, 64, 108, 76, 92, 68, 88, 74, 100, 80, 64, 96, 86, 70];
 
 export default function HomeClient({
   types,
@@ -28,6 +31,8 @@ export default function HomeClient({
   const [totalPages, setTotalPages] = useState(initialTotalPages);
   const [selected, setSelected] = useState<Entry | null>(featured);
   const [loading, setLoading] = useState(false);
+  // 2.5 详情缓存——避免重复请求
+  const detailCache = useRef<Map<number, Entry>>(new Map());
 
   const { q, type, page } = searchParams;
 
@@ -41,14 +46,19 @@ export default function HomeClient({
     const data = await res.json();
     setEntries(data.entries);
     setTotalPages(data.totalPages);
-    // 有搜索结果时，用第一条替换精选区
     if (data.entries.length > 0) {
       const first = data.entries[0];
       if (!selected || selected.id !== first.id) {
-        // 获取完整详情（含标签、例句）
-        const detailRes = await fetch(`/api/entry/${first.id}`);
-        const detail = await detailRes.json();
-        setSelected(detail.entry);
+        // 3. 尝试从缓存读取，否则 fetch
+        const cached = detailCache.current.get(first.id);
+        if (cached) {
+          setSelected(cached);
+        } else {
+          const detailRes = await fetch(`/api/entry/${first.id}`);
+          const detail = await detailRes.json();
+          detailCache.current.set(first.id, detail.entry);
+          setSelected(detail.entry);
+        }
       }
     }
     setLoading(false);
@@ -75,22 +85,28 @@ export default function HomeClient({
   };
 
   const handlePillClick = async (entry: Entry) => {
+    // 2.5 缓存命中直接展示
+    const cached = detailCache.current.get(entry.id);
+    if (cached) {
+      setSelected(cached);
+      return;
+    }
     setLoading(true);
     const res = await fetch(`/api/entry/${entry.id}`);
     const data = await res.json();
+    detailCache.current.set(entry.id, data.entry);
     setSelected(data.entry);
     setLoading(false);
   };
 
   return (
     <main>
-      {/*  首屏：标题 */}
       <header className="site-header">
         <h1>词林</h1>
         <p>遣词之源，落笔之林</p>
       </header>
 
-      {/*  精选词条 / 选中词条 —— 内容展示区，固定高度防止抖动 */}
+      {/*  精选区 */}
       <div className="hero-spot-wrapper">
         {loading && !selected ? (
           <div className="hero-spot">
@@ -117,16 +133,10 @@ export default function HomeClient({
         ) : null}
       </div>
 
-      {/* 搜索框 */}
       <SearchBox defaultValue={q} onSearch={handleSearch} />
 
-      {/* 分类标签 */}
       <div className="tag-cloud" style={{ marginBottom: 10 }}>
-        <Link
-          href="/"
-          className={`pill${!type ? " active" : ""}`}
-          onClick={(e) => { e.preventDefault(); handleClearFilter(); }}
-        >全部</Link>
+        <Link href="/" className={`pill${!type ? " active" : ""}`} onClick={(e) => { e.preventDefault(); handleClearFilter(); }}>全部</Link>
         {types.map((t, i) => (
           <Link
             key={t.id}
@@ -140,15 +150,20 @@ export default function HomeClient({
         ))}
       </div>
 
-      {/* 清除筛选 */}
       {type && (
         <div className="clear-filter">
           <Link href="/" onClick={(e) => { e.preventDefault(); handleClearFilter(); }}>清除筛选</Link>
         </div>
       )}
 
-      {/* 结果药丸 —— 始终渲染，不因 loading 重绘 */}
-      {entries.length === 0 ? (
+      {/* 4.1 骨架屏 — 仅在搜索结果为空且加载中时展示 */}
+      {entries.length === 0 ? loading ? (
+        <div className="skeleton-pill-cloud">
+          {SKELETON_WIDTHS.map((w, i) => (
+            <div key={i} className="skeleton-pill" style={{ width: `${w}px` }} />
+          ))}
+        </div>
+      ) : (
         <div className="empty">或许，换一种表达会遇见它。</div>
       ) : (
         <div className="pill-cloud">
@@ -159,14 +174,8 @@ export default function HomeClient({
                 key={entry.id}
                 href={`/entry/${entry.id}`}
                 className={`has-tooltip${selected?.id === entry.id ? " selected" : ""}`}
-                style={{
-                  background: TYPE_COLORS[typeIndex % TYPE_COLORS.length] || "#e8e8ed",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handlePillClick(entry);
-                }}
+                style={{ background: TYPE_COLORS[typeIndex % TYPE_COLORS.length] || "#e8e8ed" }}
+                onClick={(e) => { e.preventDefault(); handlePillClick(entry); }}
               >
                 {entry.title}
                 {entry.source && <span className="pill-source">{entry.source}</span>}
@@ -177,7 +186,6 @@ export default function HomeClient({
         </div>
       )}
 
-      {/* 分页 */}
       {totalPages > 1 && (
         <div className="pagination">
           {page > 1 && <a href={`?page=${page - 1}`} onClick={(e) => { e.preventDefault(); handlePageChange(page - 1); }}>← 上一页</a>}

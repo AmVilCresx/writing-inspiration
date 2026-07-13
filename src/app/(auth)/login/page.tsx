@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function AdminLoginPage() {
@@ -8,6 +8,16 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  // 如果已登录则直接跳转
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((r) => {
+        if (r.ok) window.location.replace("/admin/entries");
+      })
+      .finally(() => setChecking(false));
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +37,10 @@ export default function AdminLoginPage() {
       .catch(() => setError("邮箱或密码错误"))
       .finally(() => setLoading(false));
   };
+
+  if (checking) {
+    return <div style={{ maxWidth: 360, margin: "100px auto", padding: "0 24px", textAlign: "center", color: "var(--fg-muted)", fontSize: 14 }}>检查登录状态...</div>;
+  }
 
   const s: React.CSSProperties = { width: "100%", padding: "12px 16px", border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.5)", fontFamily: "inherit", fontSize: 15, outline: "none", borderRadius: 12, marginBottom: 16, boxSizing: "border-box", color: "var(--fg)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" };
 
@@ -48,30 +62,9 @@ export default function AdminLoginPage() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <input
-            name="email"
-            type="email"
-            placeholder="邮箱"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-            style={s}
-          />
-          <input
-            name="password"
-            type="password"
-            placeholder="密码"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ ...s, marginBottom: 24 }}
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ width: "100%", padding: "12px 0", border: "none", background: "var(--fg)", color: "#fff", fontFamily: "inherit", fontSize: 14, fontWeight: 500, cursor: loading ? "wait" : "pointer", borderRadius: 12, opacity: loading ? 0.7 : 1 }}
-          >
+          <input name="email" type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus style={s} />
+          <input name="password" type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ ...s, marginBottom: 24 }} />
+          <button type="submit" disabled={loading} style={{ width: "100%", padding: "12px 0", border: "none", background: "var(--fg)", color: "#fff", fontFamily: "inherit", fontSize: 14, fontWeight: 500, cursor: loading ? "wait" : "pointer", borderRadius: 12, opacity: loading ? 0.7 : 1 }}>
             {loading ? "登录中..." : "登录"}
           </button>
         </form>

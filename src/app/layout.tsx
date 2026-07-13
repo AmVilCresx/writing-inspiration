@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Footer from "@/components/Footer";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: "词林",
@@ -15,10 +16,12 @@ export default function RootLayout({
   return (
     <html lang="zh">
       <body>
-        <div className="page-wrapper">
-          <div className="page-content">{children}</div>
-          <Footer />
-        </div>
+        <ErrorBoundary>
+          <div className="page-wrapper">
+            <div className="page-content">{children}</div>
+            <Footer />
+          </div>
+        </ErrorBoundary>
       </body>
     </html>
   );

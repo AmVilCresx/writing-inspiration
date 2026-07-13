@@ -1,32 +1,18 @@
 import { NextResponse, NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback-secret";
-const COOKIE_NAME = "wi_admin_token";
+import { COOKIE_NAME } from "@/lib/constants";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const hasCookie = !!req.cookies.get(COOKIE_NAME)?.value;
 
-  let isAuthed = false;
-  if (token) {
-    try {
-      jwt.verify(token, JWT_SECRET);
-      isAuthed = true;
-    } catch {
-      isAuthed = false;
-    }
-  }
-
-  // 受保护路径：不在 /login 或 /password
   const isAuthPage = pathname === "/login" || pathname === "/password";
   const isProtected = pathname.startsWith("/admin") && !isAuthPage;
 
-  if (isProtected && !isAuthed) {
+  if (isProtected && !hasCookie) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (isAuthPage && isAuthed) {
+  if (isAuthPage && hasCookie) {
     return NextResponse.redirect(new URL("/admin/entries", req.url));
   }
 

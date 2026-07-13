@@ -6,10 +6,10 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!host) throw new Error("缺少环境变量 SUPABASE_HOST");
 if (!anonKey) throw new Error("缺少环境变量 SUPABASE_ANON_KEY");
-if (!serviceRoleKey) throw new Error("缺少环境变量 SUPABASE_SERVICE_ROLE_KEY");
+if (!serviceRoleKey) throw new Error("缺少环境变量 SUPABASE_SERVICE_ROLE_KEY；（1.3）确保生产环境使用强密钥");
 
 /**
- * 自定义 fetch，带超时控制（5 秒），避免 Supabase 查询无限等待
+ * 自定义 fetch，带超时控制（5 秒）
  */
 const fetchWithTimeout: typeof fetch = (input, init) => {
   const controller = new AbortController();
@@ -20,14 +20,14 @@ const fetchWithTimeout: typeof fetch = (input, init) => {
 };
 
 /**
- * 匿名客户端 — 用于前端只读查询（搜索、列表、详情）
+ * 匿名客户端 — 前端只读查询
  */
 export const supabaseAnon: SupabaseClient = createClient(host, anonKey, {
   global: { fetch: fetchWithTimeout },
 });
 
 /**
- * 服务端客户端 — 用于 admin 后台增删改（绕过 RLS）
+ * 服务端客户端 — admin CRUD（绕过 RLS）
  */
 export const supabaseService: SupabaseClient = createClient(host, serviceRoleKey, {
   global: { fetch: fetchWithTimeout },

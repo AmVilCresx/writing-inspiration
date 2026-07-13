@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyAdminCookie } from "@/lib/auth";
 import { adminCreateEntry, adminUpdateEntry, adminDeleteEntry } from "@/data/admin";
+
+const entrySchema = z.object({
+  type: z.string().min(1, "类型不能为空").max(10, "类型最多 10 个字符"),
+  title: z.string().min(1, "标题不能为空").max(50, "标题最多 50 个字符"),
+  meaning: z.string().max(200).nullable().optional(),
+  source: z.string().max(50).nullable().optional(),
+  author: z.string().max(32).nullable().optional(),
+  example: z.string().max(200).nullable().optional(),
+  tagIds: z.array(z.number()).max(5).optional(),
+});
 
 // 新增
 export async function POST(req: NextRequest) {
   if (!await verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const body = await req.json();
-  const { type, title, meaning, source, author, example, tagIds } = body;
-
-  if (!type || !title) {
-    return NextResponse.json({ error: "类型和标题不能为空" }, { status: 400 });
+  const parsed = entrySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
   }
 
+  const { type, title, meaning, source, author, example, tagIds } = parsed.data;
   const entry = await adminCreateEntry({
     type,
     title,
@@ -33,12 +44,12 @@ export async function PUT(req: NextRequest) {
   if (!await verifyAdminCookie()) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
   const body = await req.json();
-  const { id, type, title, meaning, source, author, example, tagIds } = body;
-
-  if (!id || !type || !title) {
-    return NextResponse.json({ error: "参数不完整" }, { status: 400 });
+  const parsed = entrySchema.extend({ id: z.number().int().positive() }).safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
   }
 
+  const { id, type, title, meaning, source, author, example, tagIds } = parsed.data;
   const ok = await adminUpdateEntry(id, {
     type,
     title,
@@ -46,7 +57,7 @@ export async function PUT(req: NextRequest) {
     source: source || null,
     author: author || null,
     example: example || null,
-    hidden: body.hidden ?? true,  // 未提供则保持原有（数据库层不更新此字段）
+    hidden: body.hidden ?? true,
     tagIds: tagIds || [],
   });
 

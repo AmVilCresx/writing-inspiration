@@ -1,4 +1,5 @@
 import { verifyAdminCookie } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { ModalProvider } from "@/components/Modal";
 import AdminShell from "@/components/AdminShell";
 
@@ -9,7 +10,10 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const admin = (await verifyAdminCookie()) || { email: "" };
+  const admin = await verifyAdminCookie();
+  if (!admin) {
+    redirect("/login");
+  }
 
   return (
     <ModalProvider>
