@@ -1,9 +1,9 @@
-import jwt from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { supabaseService } from "./supabase";
 import { COOKIE_NAME, SESSION_MAX_AGE } from "./constants";
 
-const JWT_SECRET = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const JWT_SECRET: string = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 if (!JWT_SECRET) {
   throw new Error("缺少环境变量 SUPABASE_SERVICE_ROLE_KEY");
 }
@@ -43,7 +43,9 @@ export async function verifyAdminCookie(): Promise<AdminPayload | null> {
   if (!token) return null;
 
   try {
-    return jwt.verify(token, JWT_SECRET) as AdminPayload;
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    if (!decoded || typeof decoded !== "object" || !("email" in decoded)) return null;
+    return decoded as AdminPayload;
   } catch {
     return null;
   }

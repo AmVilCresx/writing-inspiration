@@ -2,7 +2,7 @@ import "server-only";
 import { supabaseAnon } from "@/lib/supabase";
 import type { Entry, Tag } from "@/lib/types";
 
-//  标签辅助查询
+// 标签辅助查询
 async function fetchTagsForEntries(entryIds: number[]): Promise<Map<number, Tag[]>> {
   if (entryIds.length === 0) return new Map();
 
@@ -55,23 +55,31 @@ function mapEntry(row: any, tags: Tag[] = []): Entry {
   };
 }
 
-//  获取随机条目 —— 改用 limit(100) + 随机挑选，避免 count(*) 全表扫描
+// 获取随机条目 —— 用 count(*) 获得总数后随机偏移
 export async function fetchRandomEntry(): Promise<Entry | null> {
+  const { count } = await supabaseAnon
+    .from("wi_entries")
+    .select("*", { count: "exact", head: true })
+    .eq("hidden", false);
+
+  if (!count || count === 0) return null;
+
+  const offset = Math.floor(Math.random() * count);
   const { data } = await supabaseAnon
     .from("wi_entries")
     .select("*")
     .eq("hidden", false)
-    .limit(100)
-    .order("id", { ascending: true });
+    .order("id", { ascending: true })
+    .range(offset, offset);
 
   if (!data || data.length === 0) return null;
 
-  const row = data[Math.floor(Math.random() * data.length)];
+  const row = data[0];
   const tags = await fetchTagsForEntries([row.id]);
   return mapEntry(row, tags.get(row.id) || []);
 }
 
-//  获取条目列表（带标签）
+// 获取条目列表（带标签）
 export async function fetchEntries(params?: {
   query?: string;
   type?: string;
@@ -147,7 +155,7 @@ export async function fetchEntries(params?: {
   return entries.map((row) => mapEntry(row, tagsMap.get(row.id) || []));
 }
 
-//  获取单条条目
+// 获取单条条目
 export async function fetchEntryById(id: string): Promise<Entry | null> {
   const { data, error } = await supabaseAnon
     .from("wi_entries")
@@ -162,7 +170,7 @@ export async function fetchEntryById(id: string): Promise<Entry | null> {
   return mapEntry(data, tagsMap.get(data.id) || []);
 }
 
-//  获取相关推荐（同类型或共享标签）
+// 获取相关推荐（同类型或共享标签）
 export async function fetchRelated(entry: Entry): Promise<Entry[]> {
   const tagIds = entry.tags.map((t) => t.id);
 
@@ -193,7 +201,7 @@ export async function fetchRelated(entry: Entry): Promise<Entry[]> {
     .map(({ _shared, ...e }) => e);
 }
 
-//  获取所有类型
+// 获取所有类型
 export async function fetchTypes(): Promise<{ id: number; name: string }[]> {
   const { data, error } = await supabaseAnon
     .from("wi_types")
@@ -207,7 +215,7 @@ export async function fetchTypes(): Promise<{ id: number; name: string }[]> {
   return data || [];
 }
 
-//  获取标签总数和条目总数
+// 获取标签总数和条目总数
 export async function fetchCounts(): Promise<{ entries: number; tags: number }> {
   const [{ count: entries }, { count: tags }] = await Promise.all([
     supabaseAnon.from("wi_entries").select("*", { count: "exact", head: true }),

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import SearchBox from "@/components/SearchBox";
 import type { Entry, Tag } from "@/lib/types";
@@ -27,17 +28,30 @@ export default function HomeClient({
   initialTotalPages: number;
   searchParams: { q: string; type: string; page: number };
 }) {
+  const router = useRouter();
+  const searchParamsObj = useSearchParams();
   const [entries, setEntries] = useState(initialEntries);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
   const [selected, setSelected] = useState<Entry | null>(featured);
   const [loading, setLoading] = useState(false);
-  // 2.5 详情缓存——避免重复请求
+  // 详情缓存——避免重复请求
   const detailCache = useRef<Map<number, Entry>>(new Map());
 
   const { q, type, page } = searchParams;
 
-  const fetchEntries = async (params: typeof searchParams) => {
+  // 同步 URL 与查询状态
+  const syncUrl = useCallback((params: { q?: string; type?: string; page: number }) => {
+    const sp = new URLSearchParams();
+    if (params.q) sp.set("q", params.q);
+    if (params.type) sp.set("type", params.type);
+    if (params.page > 1) sp.set("page", String(params.page));
+    const target = sp.toString() ? "?" + sp.toString() : "/";
+    router.replace(target, { scroll: false });
+  }, [router]);
+
+  const fetchEntries = async (params: { q?: string; type?: string; page: number }) => {
     setLoading(true);
+    syncUrl(params);
     const sp = new URLSearchParams();
     if (params.q) sp.set("q", params.q);
     if (params.type) sp.set("type", params.type);
@@ -49,7 +63,6 @@ export default function HomeClient({
     if (data.entries.length > 0) {
       const first = data.entries[0];
       if (!selected || selected.id !== first.id) {
-        // 3. 尝试从缓存读取，否则 fetch
         const cached = detailCache.current.get(first.id);
         if (cached) {
           setSelected(cached);
@@ -65,27 +78,22 @@ export default function HomeClient({
   };
 
   const handleSearch = (query: string) => {
-    const newParams = { ...searchParams, q: query, page: 1 };
-    fetchEntries(newParams);
+    fetchEntries({ q: query, type, page: 1 });
   };
 
   const handleTypeFilter = (typeName: string) => {
-    const newParams = { ...searchParams, type: typeName, page: 1 };
-    fetchEntries(newParams);
+    fetchEntries({ q, type: typeName, page: 1 });
   };
 
   const handleClearFilter = () => {
-    const newParams = { ...searchParams, type: "", page: 1 };
-    fetchEntries(newParams);
+    fetchEntries({ q, page: 1 });
   };
 
   const handlePageChange = (newPage: number) => {
-    const newParams = { ...searchParams, page: newPage };
-    fetchEntries(newParams);
+    fetchEntries({ q, type, page: newPage });
   };
 
   const handlePillClick = async (entry: Entry) => {
-    // 2.5 缓存命中直接展示
     const cached = detailCache.current.get(entry.id);
     if (cached) {
       setSelected(cached);
@@ -156,7 +164,7 @@ export default function HomeClient({
         </div>
       )}
 
-      {/* 4.1 骨架屏 — 仅在搜索结果为空且加载中时展示 */}
+      {/* 骨架屏 — 仅在搜索结果为空且加载中时展示 */}
       {entries.length === 0 ? loading ? (
         <div className="skeleton-pill-cloud">
           {SKELETON_WIDTHS.map((w, i) => (

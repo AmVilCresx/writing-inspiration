@@ -15,9 +15,7 @@
 *.pem
 
 # debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+**/*.log*
 
 # local env files
 .env*.local
@@ -36,3 +34,5 @@ next-env.d.ts
 # vim
 *.swp
 .*.swp
+# 临时参考文件（恢复用）
+.tmp_ref/

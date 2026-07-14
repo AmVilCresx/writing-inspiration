@@ -3,7 +3,7 @@ import { verifyAdmin } from "@/lib/auth";
 import jwt from "jsonwebtoken";
 import { COOKIE_NAME, SESSION_MAX_AGE } from "@/lib/constants";
 
-const JWT_SECRET = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const JWT_SECRET: string = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 if (!JWT_SECRET) throw new Error("缺少 SUPABASE_SERVICE_ROLE_KEY");
 
 export async function POST(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "邮箱或密码错误" }, { status: 401 });
   }
 
-  const token = jwt.sign({ email: admin.email }, JWT_SECRET, { expiresIn: "7d" });
+  const token = jwt.sign({ email: admin.email }, JWT_SECRET, { expiresIn: "7d" as const });
   const response = NextResponse.json({ ok: true });
   response.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
