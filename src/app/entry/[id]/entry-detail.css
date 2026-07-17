@@ -1,0 +1,147 @@
+/* ═══════════════════════════════════════
+   条目详情页 — 毛玻璃卡片
+   （仅在 /entry/[id] 路由加载）
+   ═══════════════════════════════════════ */
+
+.entry-page {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+}
+
+.entry-page .glass-card {
+  background: linear-gradient(145deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.45) 100%);
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 24px;
+  padding: 40px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 16px 50px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.entry-page .back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  margin-bottom: 32px;
+  transition: color 0.2s;
+}
+
+.entry-page .back-link:hover { color: var(--fg); }
+
+.entry-page h1 {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-bottom: 12px;
+}
+
+.entry-page .detail-meta {
+  font-size: 13px;
+  color: var(--fg-dim);
+  margin-bottom: 36px;
+  line-height: 1.8;
+}
+
+.entry-page .detail-meta .type-badge {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--fg);
+  background: rgba(255,255,255,0.6);
+  padding: 2px 12px;
+  border-radius: 12px;
+  margin-right: 10px;
+  font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.entry-page .detail-body { font-size: 15px; line-height: 1.9; }
+
+.entry-page .detail-body p { margin-bottom: 20px; }
+
+.entry-page .detail-body .content-quote {
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.8;
+  color: var(--fg);
+}
+
+.entry-page .detail-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.entry-page .detail-section { margin-bottom: 32px; }
+
+.entry-page .detail-body .example-text {
+  color: var(--fg-dim);
+  border-left: 2px solid rgba(255,255,255,0.5);
+  padding-left: 16px;
+}
+
+.entry-page .related {
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255,255,255,0.4);
+}
+
+.entry-page .related h2 {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-muted);
+  margin-bottom: 16px;
+  letter-spacing: 0.06em;
+}
+
+.entry-page .related .tag-link {
+  display: inline-block;
+  font-size: 12px;
+  padding: 4px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.5);
+  color: var(--fg);
+  transition: all 0.25s;
+  border: 1px solid rgba(255,255,255,0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.entry-page .related .tag-link:hover {
+  background: rgba(255,255,255,0.75);
+}
+
+.entry-page .related .related-item {
+  padding: 12px 0;
+  border-top: 1px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.entry-page .related .related-item a {
+  font-size: 15px;
+  font-weight: 400;
+  transition: color 0.2s;
+}
+
+.entry-page .related .related-item a:hover {
+  color: var(--fg-dim);
+}
+
+.entry-page .related .related-item .type-tag {
+  font-size: 10px;
+  color: var(--fg-dim);
+  background: rgba(255,255,255,0.5);
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+  .entry-page .glass-card { padding: 28px 20px; }
+}

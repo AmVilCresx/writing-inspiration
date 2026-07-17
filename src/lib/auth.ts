@@ -3,9 +3,9 @@ import { cookies } from "next/headers";
 import { supabaseService } from "./supabase";
 import { COOKIE_NAME, SESSION_MAX_AGE } from "./constants";
 
-const JWT_SECRET: string = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+const JWT_SECRET: string = process.env.JWT_SECRET ?? "";
 if (!JWT_SECRET) {
-  throw new Error("缺少环境变量 SUPABASE_SERVICE_ROLE_KEY");
+  throw new Error("缺少环境变量 JWT_SECRET");
 }
 
 export interface AdminPayload {

@@ -90,6 +90,22 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- --------------------------------------------
+-- 辅助函数：原子替换条目全部标签（先删后插，单事务内完成）
+-- --------------------------------------------
+CREATE OR REPLACE FUNCTION wi_replace_entry_tags(p_entry_id bigint, rows_json text)
+RETURNS void AS $$
+BEGIN
+  DELETE FROM wi_entry_tags WHERE entry_id = p_entry_id;
+  IF rows_json IS NOT NULL AND rows_json != '[]' THEN
+    INSERT INTO wi_entry_tags (entry_id, tag_id)
+    SELECT p_entry_id, (r->>'tag_id')::bigint
+    FROM json_array_elements(rows_json::json) AS r
+    ON CONFLICT (entry_id, tag_id) DO NOTHING;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- --------------------------------------------
 -- 索引
 -- --------------------------------------------
 CREATE INDEX idx_wi_entries_type   ON wi_entries (type);

@@ -1,4 +1,5 @@
 @import "./clean-blog.css";
+@import "./frontend.css";
 
 /* 骨架屏 — 搜索/分页切换时的加载占位 */
 .skeleton-pill-cloud {

@@ -182,25 +182,34 @@ export async function adminUpdateEntry(id: number, entry: Omit<AdminEntry, "id">
     return false;
   }
 
-  // 全量替换标签关联：先删旧关联，再插入新关联
-  const { error: deleteErr } = await supabaseService
-    .from("wi_entry_tags")
-    .delete()
-    .eq("entry_id", id);
+  // 替换标签关联：优先使用数据库函数（原子操作），若函数未创建则回退到 delete+insert
+  const { error: rpcErr } = await supabaseService.rpc("wi_replace_entry_tags", {
+    p_entry_id: id,
+    rows_json: JSON.stringify(tagIds.map((tag_id) => ({ tag_id }))),
+  });
 
-  if (deleteErr) {
-    console.error("adminUpdateEntry delete tags error:", deleteErr);
-    return false;
-  }
-
-  if (tagIds.length > 0) {
-    const { error: insertErr } = await supabaseService
+  if (rpcErr) {
+    // 函数尚未在数据库中创建，回退到逐步操作
+    console.warn("wi_replace_entry_tags 不可用，回退到 delete+insert:", rpcErr.message);
+    const { error: deleteErr } = await supabaseService
       .from("wi_entry_tags")
-      .insert(tagIds.map((tag_id) => ({ entry_id: id, tag_id })));
+      .delete()
+      .eq("entry_id", id);
 
-    if (insertErr) {
-      console.error("adminUpdateEntry insert tags error:", insertErr);
+    if (deleteErr) {
+      console.error("adminUpdateEntry delete tags error:", deleteErr);
       return false;
+    }
+
+    if (tagIds.length > 0) {
+      const { error: insertErr } = await supabaseService
+        .from("wi_entry_tags")
+        .insert(tagIds.map((tag_id) => ({ entry_id: id, tag_id })));
+
+      if (insertErr) {
+        console.error("adminUpdateEntry insert tags error:", insertErr);
+        return false;
+      }
     }
   }
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { fetchEntryById, fetchRelated } from "@/data/entries";
 import { notFound } from "next/navigation";
 import { getTagColor } from "@/lib/colors";
+import "./entry-detail.css";
 
 export default async function EntryPage({
   params,
