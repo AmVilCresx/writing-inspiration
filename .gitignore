@@ -36,3 +36,13 @@ next-env.d.ts
 .*.swp
 # 临时参考文件（恢复用）
 .tmp_ref/
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+
+!.env.example
